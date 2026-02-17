@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+
+photos/
+data/logs/
+data/output/
+
+*.csv
+*.html
+
+.DS_Store
+Thumbs.db

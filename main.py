@@ -1,53 +1,81 @@
 # main.py
 
 import os
-from src.detector import Detector
+from src.detector import HelmetDetector
 from src.gps_reader import GPSReader
 from src.violation_logger import ViolationLogger
 from src.heatmap_engine import HeatmapEngine
 import config
 
+
 # =====================================
-# CREATE REQUIRED FOLDERS (IMPORTANT)
+# CREATE REQUIRED FOLDERS
 # =====================================
-os.makedirs(config.INPUT_FOLDER, exist_ok=True)
-os.makedirs(config.OUTPUT_FOLDER, exist_ok=True)
-os.makedirs("data/logs", exist_ok=True)
+os.makedirs(config.INPUT_DIR, exist_ok=True)
+os.makedirs(config.OUTPUT_DIR, exist_ok=True)
+os.makedirs(config.LOG_DIR, exist_ok=True)
+
 
 def main():
 
     print("Initializing system...")
 
-    detector = Detector(config.MODEL_PATH)
+    detector = HelmetDetector()
     gps = GPSReader()
-    logger = ViolationLogger(config.LOG_FILE)
+
+    log_file = os.path.join(config.LOG_DIR, "violations.csv")
+    logger = ViolationLogger(log_file)
 
     print("Processing images...")
 
-    for filename in os.listdir(config.INPUT_FOLDER):
+    for filename in os.listdir(config.INPUT_DIR):
 
         if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
             continue
 
-        img_path = os.path.join(config.INPUT_FOLDER, filename)
+        img_path = os.path.join(config.INPUT_DIR, filename)
 
-        print(f"Analyzing: {filename}")
+        print(f"\nAnalyzing: {filename}")
 
-        violations = detector.detect(img_path)
+        # Read image
+        import cv2
+        image = cv2.imread(img_path)
 
-        if violations:
+        if image is None:
+            print("Could not read image.")
+            continue
+
+        detections, violation = detector.detect(image)
+
+        if violation:
+
             lat, lon = gps.get_location()
             logger.log(lat, lon, filename)
-            print("Violation detected!")
+
+            print("🚨 VIOLATION: No helmet detected!")
+
+            # Save violation image
+            out_path = os.path.join(config.OUTPUT_DIR, filename)
+            cv2.imwrite(out_path, image)
+
         else:
             print("No violation.")
 
-    print("Generating heatmap...")
+        # Print detections
+        for det in detections:
+            print(
+                f"Detected: {det['label']} "
+                f"(score={det['score']:.2f})"
+            )
 
-    heatmap = HeatmapEngine(config.LOG_FILE, config.HEATMAP_OUTPUT)
+    print("\nGenerating heatmap...")
+
+    heatmap_output = os.path.join(config.OUTPUT_DIR, "heatmap.html")
+    heatmap = HeatmapEngine(log_file, heatmap_output)
     heatmap.generate()
 
     print("Done.")
+
 
 if __name__ == "__main__":
     main()

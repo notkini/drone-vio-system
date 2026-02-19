@@ -1,35 +1,48 @@
-# src/detector.py
-
+import cv2
+import numpy as np
 from pycoral.utils.edgetpu import make_interpreter
-from pycoral.adapters import common
-from PIL import Image
+from pycoral.adapters.common import input_size, set_input
+from pycoral.adapters.detect import get_objects
+
 import config
 
-class Detector:
 
-    def __init__(self, model_path):
-
-        print("Loading Edge TPU model...")
-        self.interpreter = make_interpreter(model_path)
+class HelmetDetector:
+    def __init__(self):
+        self.interpreter = make_interpreter(config.MODEL_PATH)
         self.interpreter.allocate_tensors()
 
-    def detect(self, image_path):
+        self.width, self.height = input_size(self.interpreter)
 
-        image = Image.open(image_path).convert("RGB")
-        common.set_resized_input(
-            self.interpreter,
-            image.size,
-            lambda size: image.resize(size, Image.LANCZOS)
-        )
+    def detect(self, image):
+
+        img = cv2.resize(image, (self.width, self.height))
+        set_input(self.interpreter, img)
 
         self.interpreter.invoke()
 
-        output = self.interpreter.get_tensor(
-            self.interpreter.get_output_details()[0]['index']
+        objs = get_objects(
+            self.interpreter,
+            score_threshold=config.CONF_THRESHOLD
         )
 
-        # Simple check for demo
-        if output.max() > config.CONF_THRESHOLD:
-            return True
+        detections = []
+        violation = False
 
-        return False
+        for obj in objs:
+            class_id = int(obj.id)
+            score = obj.score
+            bbox = obj.bbox
+
+            detections.append({
+                "class_id": class_id,
+                "label": config.CLASS_NAMES.get(class_id, "unknown"),
+                "score": score,
+                "bbox": bbox
+            })
+
+            # ⭐ ONLY NO_HELMET triggers violation
+            if class_id == config.VIOLATION_CLASS_ID:
+                violation = True
+
+        return detections, violation

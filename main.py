@@ -1,34 +1,53 @@
 # main.py
 
-from src.detector import ViolationDetector
-from src.gps_reader import get_current_location
-from src.violation_logger import log_violation
-from src.heatmap_engine import generate_heatmap
-from config import MODEL_PATH
+import os
+from src.detector import Detector
+from src.gps_reader import GPSReader
+from src.violation_logger import ViolationLogger
+from src.heatmap_engine import HeatmapEngine
+import config
 
+# =====================================
+# CREATE REQUIRED FOLDERS (IMPORTANT)
+# =====================================
+os.makedirs(config.INPUT_FOLDER, exist_ok=True)
+os.makedirs(config.OUTPUT_FOLDER, exist_ok=True)
+os.makedirs("data/logs", exist_ok=True)
 
 def main():
 
-    detector = ViolationDetector(MODEL_PATH)
+    print("Initializing system...")
 
-    image_path = "test.jpg"  # Replace with camera input later
+    detector = Detector(config.MODEL_PATH)
+    gps = GPSReader()
+    logger = ViolationLogger(config.LOG_FILE)
 
-    violation = detector.detect(image_path)
+    print("Processing images...")
 
-    if violation:
-        print("Violation detected")
+    for filename in os.listdir(config.INPUT_FOLDER):
 
-        lat, lon = get_current_location()
+        if not filename.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
 
-        print("Location:", lat, lon)
+        img_path = os.path.join(config.INPUT_FOLDER, filename)
 
-        log_violation(lat, lon)
+        print(f"Analyzing: {filename}")
 
-        generate_heatmap()
+        violations = detector.detect(img_path)
 
-    else:
-        print("No violation")
+        if violations:
+            lat, lon = gps.get_location()
+            logger.log(lat, lon, filename)
+            print("Violation detected!")
+        else:
+            print("No violation.")
 
+    print("Generating heatmap...")
+
+    heatmap = HeatmapEngine(config.LOG_FILE, config.HEATMAP_OUTPUT)
+    heatmap.generate()
+
+    print("Done.")
 
 if __name__ == "__main__":
     main()

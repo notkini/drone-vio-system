@@ -1,32 +1,34 @@
 # src/heatmap_engine.py
 
-import csv
+import pandas as pd
 import folium
 from folium.plugins import HeatMap
-from config import LOG_FILE, HEATMAP_OUTPUT
 
+class HeatmapEngine:
 
-def generate_heatmap():
+    def __init__(self, log_file, output_file):
+        self.log_file = log_file
+        self.output_file = output_file
 
-    points = []
+    def generate(self):
 
-    try:
-        with open(LOG_FILE, "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                points.append([float(row["latitude"]), float(row["longitude"])])
-    except FileNotFoundError:
-        print("No violations logged yet.")
-        return
+        try:
+            df = pd.read_csv(self.log_file)
 
-    if not points:
-        print("No data for heatmap.")
-        return
+            if df.empty:
+                print("No data for heatmap.")
+                return
 
-    mumbai_map = folium.Map(location=[19.0760, 72.8777], zoom_start=12)
+            m = folium.Map(
+                location=[df["latitude"].mean(), df["longitude"].mean()],
+                zoom_start=13
+            )
 
-    HeatMap(points).add_to(mumbai_map)
+            HeatMap(df[["latitude", "longitude"]]).add_to(m)
 
-    mumbai_map.save(HEATMAP_OUTPUT)
+            m.save(self.output_file)
 
-    print("Heatmap saved:", HEATMAP_OUTPUT)
+            print("Heatmap saved:", self.output_file)
+
+        except Exception as e:
+            print("Heatmap error:", e)

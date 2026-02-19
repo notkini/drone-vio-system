@@ -1,2 +1,4 @@
-folium
 pycoral
+Pillow
+pandas
+folium

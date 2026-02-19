@@ -1,8 +1,7 @@
-# src/violation_logger.py
-
-import csv
 import os
+import csv
 from datetime import datetime
+
 
 class ViolationLogger:
 
@@ -21,8 +20,9 @@ class ViolationLogger:
 
         with open(self.log_file, "a", newline="") as f:
             writer = csv.writer(f)
+
             writer.writerow([
-                datetime.now(),
+                datetime.now().isoformat(),
                 lat,
                 lon,
                 image_name

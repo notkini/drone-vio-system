@@ -1,17 +1,24 @@
-# ===== MODEL CONFIG =====
+# config.py
 
 MODEL_PATH = "models/model_edgetpu.tflite"
 
-# Coral requires this
-USE_TPU = True
+INPUT_FOLDER = "data/input"
+OUTPUT_FOLDER = "data/output"
 
-# Input size used during export
-INPUT_SIZE = (640, 640)
+LOG_FILE = "data/logs/violations.csv"
 
-# Detection threshold
-CONF_THRESHOLD = 0.5
+HEATMAP_OUTPUT = "data/output/heatmap.html"
 
-# ===== CLASS MAPPING =====
+
+# ===== MODEL CLASSES =====
+
+HELMET_CLASS_ID = 0
+NO_HELMET_CLASS_ID = 1
+RIDER_CLASS_ID = 2
+PLATE_CLASS_ID = 3
+
+
+# Optional dictionary (useful for debugging / future UI)
 
 CLASS_NAMES = {
     0: "helmet",
@@ -20,15 +27,6 @@ CLASS_NAMES = {
     3: "plate"
 }
 
-# ONLY THIS CLASS = violation
-VIOLATION_CLASS_ID = 1
 
-# ===== FILE PATHS =====
-
-INPUT_DIR = "input"
-OUTPUT_DIR = "output"
-LOG_DIR = "logs"
-
-# ===== HEATMAP DEFAULT (used if GPS unavailable) =====
-DEFAULT_LAT = 19.0760
-DEFAULT_LON = 72.8777
+# Detection threshold
+CONF_THRESHOLD = 0.4

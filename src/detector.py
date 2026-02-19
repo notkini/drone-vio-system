@@ -1,48 +1,63 @@
 import cv2
 import numpy as np
 from pycoral.utils.edgetpu import make_interpreter
-from pycoral.adapters.common import input_size, set_input
-from pycoral.adapters.detect import get_objects
-
+from pycoral.adapters.common import input_size, set_input, output_tensor
 import config
 
 
-class HelmetDetector:
-    def __init__(self):
-        self.interpreter = make_interpreter(config.MODEL_PATH)
+class Detector:
+
+    def __init__(self, model_path):
+
+        print("Loading Edge TPU model...")
+
+        self.interpreter = make_interpreter(model_path)
         self.interpreter.allocate_tensors()
 
         self.width, self.height = input_size(self.interpreter)
 
-    def detect(self, image):
+    def detect(self, image_path):
 
-        img = cv2.resize(image, (self.width, self.height))
-        set_input(self.interpreter, img)
+        img = cv2.imread(image_path)
+        if img is None:
+            print("Failed to load image:", image_path)
+            return False
 
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_resized = cv2.resize(img_rgb, (self.width, self.height))
+
+        set_input(self.interpreter, img_resized)
         self.interpreter.invoke()
 
-        objs = get_objects(
-            self.interpreter,
-            score_threshold=config.CONF_THRESHOLD
-        )
+        output = output_tensor(self.interpreter, 0)
 
-        detections = []
-        violation = False
+        if output is None:
+            return False
 
-        for obj in objs:
-            class_id = int(obj.id)
-            score = obj.score
-            bbox = obj.bbox
+        violation_found = False
 
-            detections.append({
-                "class_id": class_id,
-                "label": config.CLASS_NAMES.get(class_id, "unknown"),
-                "score": score,
-                "bbox": bbox
-            })
+        if isinstance(output, np.ndarray):
 
-            # ⭐ ONLY NO_HELMET triggers violation
-            if class_id == config.VIOLATION_CLASS_ID:
-                violation = True
+            for det in output:
 
-        return detections, violation
+                if len(det) < 2:
+                    continue
+
+                class_id = int(det[0])
+                confidence = float(det[1])
+
+                # Print detected class (for debugging)
+                if class_id in config.CLASS_NAMES:
+                    print(
+                        f"Detected: {config.CLASS_NAMES[class_id]} "
+                        f"(conf: {confidence:.2f})"
+                    )
+
+                # 🚨 ONLY no_helmet is violation
+                if (
+                    class_id == config.NO_HELMET_CLASS_ID
+                    and confidence > config.CONF_THRESHOLD
+                ):
+                    violation_found = True
+
+        return violation_found

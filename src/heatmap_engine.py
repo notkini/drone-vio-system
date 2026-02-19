@@ -1,34 +1,34 @@
-# src/heatmap_engine.py
-
+import os
 import pandas as pd
 import folium
 from folium.plugins import HeatMap
 
+
 class HeatmapEngine:
 
     def __init__(self, log_file, output_file):
+
         self.log_file = log_file
         self.output_file = output_file
 
     def generate(self):
 
-        try:
-            df = pd.read_csv(self.log_file)
+        if not os.path.exists(self.log_file):
+            print("No data for heatmap.")
+            return
 
-            if df.empty:
-                print("No data for heatmap.")
-                return
+        df = pd.read_csv(self.log_file)
 
-            m = folium.Map(
-                location=[df["latitude"].mean(), df["longitude"].mean()],
-                zoom_start=13
-            )
+        if df.empty:
+            print("No data for heatmap.")
+            return
 
-            HeatMap(df[["latitude", "longitude"]]).add_to(m)
+        m = folium.Map(location=[df.latitude.mean(), df.longitude.mean()], zoom_start=12)
 
-            m.save(self.output_file)
+        HeatMap(df[["latitude", "longitude"]].values).add_to(m)
 
-            print("Heatmap saved:", self.output_file)
+        os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
 
-        except Exception as e:
-            print("Heatmap error:", e)
+        m.save(self.output_file)
+
+        print(f"Heatmap saved: {self.output_file}")

@@ -1,13 +1,12 @@
-# src/gps_reader.py
-
 import random
+
 
 class GPSReader:
 
     def get_location(self):
 
-        # Example: Mumbai coordinates
-        lat = 19.07 + random.uniform(-0.01, 0.01)
-        lon = 72.87 + random.uniform(-0.01, 0.01)
+        # Simulated GPS (Mumbai area)
+        lat = random.uniform(18.90, 19.30)
+        lon = random.uniform(72.70, 73.00)
 
         return lat, lon
